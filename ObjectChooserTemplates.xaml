@@ -1,0 +1,173 @@
+<ResourceDictionary
+    x:Class="UnderAfricanSkies.ObjectChooser.ObjectChooserTemplates"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="clr-namespace:UnderAfricanSkies.ObjectChooser">
+
+    <!-- The UAS Object Chooser dockable panel UI. -->
+    <DataTemplate DataType="{x:Type local:ObjectChooserDockable}">
+        <Grid Margin="6">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>  <!-- search + refresh + download -->
+                <RowDefinition Height="Auto"/>  <!-- type + sort -->
+                <RowDefinition Height="Auto"/>  <!-- toggles -->
+                <RowDefinition Height="*"/>     <!-- list with thumbnails -->
+                <RowDefinition Height="Auto"/>  <!-- description + wiki link -->
+                <RowDefinition Height="Auto"/>  <!-- action buttons -->
+                <RowDefinition Height="Auto"/>  <!-- status -->
+            </Grid.RowDefinitions>
+
+            <!-- search + refresh + download-for-offline (moved up here, out of the way) -->
+            <Grid Grid.Row="0" Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         Text="{Binding Search, UpdateSourceTrigger=PropertyChanged, Delay=150}"
+                         ToolTip="Search by name or catalogue number (M33, NGC 253, Sculptor)"/>
+                <Button Grid.Column="1" Margin="4,0,0,0" Padding="8,0" Content="↻"
+                        ToolTip="Reload catalogue" Command="{Binding RefreshCommand}"/>
+                <Button Grid.Column="2" Margin="4,0,0,0" Padding="8,2" Content="⬇ images"
+                        ToolTip="Download all object images once (online) so they work offline at the telescope"
+                        Command="{Binding PrepareOfflineCommand}" IsEnabled="{Binding IsNotPreparing}"/>
+            </Grid>
+
+            <!-- type + sort -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,4">
+                <ComboBox SelectedValue="{Binding TypeFilter}" SelectedValuePath="Tag" Width="110">
+                    <ComboBoxItem Content="All types" Tag="all" IsSelected="True"/>
+                    <ComboBoxItem Content="Galaxies"  Tag="galaxies"/>
+                    <ComboBoxItem Content="Nebulae"   Tag="nebulae"/>
+                    <ComboBoxItem Content="Clusters"  Tag="clusters"/>
+                    <ComboBoxItem Content="Planets"   Tag="planets"/>
+                </ComboBox>
+                <TextBlock Text="Sort:" VerticalAlignment="Center" Margin="10,0,4,0" Opacity="0.7"/>
+                <ComboBox SelectedValue="{Binding SortBy}" SelectedValuePath="Tag" Width="120">
+                    <ComboBoxItem Content="Max altitude" Tag="altitude" IsSelected="True"/>
+                    <ComboBoxItem Content="Name"         Tag="name"/>
+                    <ComboBoxItem Content="Magnitude"    Tag="magnitude"/>
+                    <ComboBoxItem Content="Size"         Tag="size"/>
+                </ComboBox>
+            </StackPanel>
+
+            <!-- toggles -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,4">
+                <TextBlock Text="Southern only" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <CheckBox IsChecked="{Binding SouthernOnly}" VerticalAlignment="Center"/>
+                <TextBlock Text="Well placed tonight" VerticalAlignment="Center" Margin="18,0,5,0"/>
+                <CheckBox IsChecked="{Binding WellPlacedOnly}" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- object list: 150x150 thumbnail + details per row -->
+            <ListBox Grid.Row="3"
+                     ItemsSource="{Binding Objects}"
+                     SelectedItem="{Binding SelectedObject}"
+                     Background="#0D0D14"
+                     BorderBrush="#23232E" BorderThickness="1"
+                     Foreground="#E6E6E6"
+                     HorizontalContentAlignment="Stretch"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingStackPanel.IsVirtualizing="True"
+                     VirtualizingStackPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="Foreground" Value="#E6E6E6"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Padding" Value="3"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                            BorderBrush="#1E1E28" BorderThickness="0,0,0,1"
+                                            Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter/>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bd" Property="Background" Value="#16161f"/>
+                                        </Trigger>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="bd" Property="Background" Value="#1d2a3a"/>
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,3" Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid Grid.Column="0" Width="150" Height="150">
+                                <Border CornerRadius="3" Background="#000000">
+                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill"/>
+                                </Border>
+                                <!-- perfect focal length, overlaid on the bottom of the image -->
+                                <Border VerticalAlignment="Bottom" Background="#D8000000" CornerRadius="0,0,3,3"
+                                        Padding="3,2" Visibility="{Binding FocalVisibility}"
+                                        ToolTip="Focal length that frames this object to fill ~60–80% of the camera frame">
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                        <TextBlock Text="&#9673;" Foreground="#8FE3FF" FontSize="12" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding FocalText}" Foreground="#8FE3FF" FontSize="12"
+                                                   FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                            <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding DisplayName}" FontWeight="Bold" FontSize="14"
+                                           Foreground="#F2F2F5" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding ListLine}" FontSize="12" Margin="0,3,0,0"
+                                           Foreground="#AEAEBA" TextWrapping="Wrap"/>
+                                <!-- recommended telescope focal length, clearly labelled -->
+                                <TextBlock FontSize="13" Margin="0,5,0,0" TextWrapping="Wrap"
+                                           Visibility="{Binding FocalVisibility}"
+                                           ToolTip="Focal length that frames this object to fill ~60–80% of your camera frame">
+                                    <Run Text="&#9673;  Telescope: " Foreground="#9FB2C0"/><Run Text="{Binding FocalText}" FontWeight="SemiBold" Foreground="#8FE3FF"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- empty-state hint: explains WHY the list is empty (never looks broken) -->
+            <Border Grid.Row="3" Background="#0D0D14" Visibility="{Binding EmptyVisibility}"
+                    BorderBrush="#23232E" BorderThickness="1">
+                <TextBlock Text="{Binding EmptyHint}" Foreground="#C8C8D2" FontSize="13"
+                           TextWrapping="Wrap" TextAlignment="Center" LineHeight="20"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                           MaxWidth="360" Margin="24"/>
+            </Border>
+
+            <!-- description + wiki link for the selected object -->
+            <StackPanel Grid.Row="4" Margin="0,6,0,0">
+                <TextBlock Text="{Binding PreviewText}" TextWrapping="Wrap" MaxHeight="60" Opacity="0.8" FontSize="11"/>
+                <Button Content="Read more on Wikipedia →" HorizontalAlignment="Left" Margin="0,3,0,0" Padding="0"
+                        BorderThickness="0" Background="Transparent" Cursor="Hand" Command="{Binding OpenWikiCommand}"/>
+            </StackPanel>
+
+            <!-- action buttons -->
+            <UniformGrid Grid.Row="5" Columns="2" Margin="0,6,0,0">
+                <Button Margin="0,0,2,0" Padding="0,4" Content="Set in Framing"
+                        Command="{Binding SetInFramingCommand}" CommandParameter="{Binding SelectedObject}"/>
+                <Button Margin="2,0,0,0" Padding="0,4" Content="Slew &amp; center"
+                        Command="{Binding SlewCommand}"/>
+            </UniformGrid>
+
+            <!-- status -->
+            <StackPanel Grid.Row="6" Margin="0,4,0,0">
+                <TextBlock Text="{Binding OfflineStatus}" Opacity="0.7" FontSize="11" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding StatusText}" Opacity="0.75" FontSize="11" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding SensorText}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding LocationText}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
+            </StackPanel>
+        </Grid>
+    </DataTemplate>
+</ResourceDictionary>

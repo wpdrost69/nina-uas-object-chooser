@@ -1,0 +1,39 @@
+name: Build UAS Object Chooser
+
+# Runs on every push, and can also be started by hand from the Actions tab.
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    # Windows is required: NINA plugins are WPF/.NET and only build on Windows.
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v4
+
+      - name: Install the .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build the plugin (Release)
+        shell: pwsh
+        run: |
+          # Find the .csproj wherever it sits in the repo, so this works no matter
+          # how you uploaded the files.
+          $proj = Get-ChildItem -Recurse -Filter *.csproj | Select-Object -First 1
+          if (-not $proj) { throw "No .csproj found in the repository." }
+          Write-Host "Building $($proj.FullName)"
+          dotnet restore $proj.FullName
+          dotnet build   $proj.FullName -c Release --no-restore
+
+      - name: Collect the compiled plugin (.dll)
+        uses: actions/upload-artifact@v4
+        with:
+          name: UAS.ObjectChooser-plugin
+          # The finished plugin DLL you copy into NINA's Plugins folder.
+          path: '**/bin/**/UnderAfricanSkies.ObjectChooser.dll'
+          if-no-files-found: warn

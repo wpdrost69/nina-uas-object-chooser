@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- WPF plugin for NINA 3.x, .NET 8 (Windows). -->
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+
+    <!-- We keep the plugin manifest metadata in Properties/AssemblyInfo.cs
+         (AssemblyMetadata attributes), so let that file own the attributes. -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+
+    <AssemblyName>UnderAfricanSkies.ObjectChooser</AssemblyName>
+    <RootNamespace>UnderAfricanSkies.ObjectChooser</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The NINA plugin SDK. After first restore, keep it current with:
+         Update-Package NINA.Plugin -IncludePrerelease
+         (Pin the version that matches the NINA build you test against.) -->
+    <PackageReference Include="NINA.Plugin" Version="3.0.0.1000" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Bundled catalogue: the plugin always has data, even offline / before the
+         website endpoint is deployed. The live URL just provides later updates. -->
+    <EmbeddedResource Include="astro-catalog.json" />
+  </ItemGroup>
+
+  <!--
+    OPTIONAL convenience: copy the built DLL straight into NINA's plugin folder on build,
+    so you can just Build then restart/reload NINA. Uncomment to enable.
+
+  <Target Name="CopyToNinaPlugins" AfterTargets="Build">
+    <PropertyGroup>
+      <NinaPlugins>$(LOCALAPPDATA)\NINA\Plugins\$(AssemblyName)</NinaPlugins>
+    </PropertyGroup>
+    <MakeDir Directories="$(NinaPlugins)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(NinaPlugins)" />
+  </Target>
+  -->
+
+</Project>
