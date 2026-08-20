@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 // ===========================================================================
 
 // The plugin's unique identifier. Keep this GUID stable for the life of the plugin
-// (changing it makes NINA treat it as a different plugin). Generated once for you:
+// (changing it makes NINA treat it as a different plugin).
 [assembly: Guid("fcb5d1b9-b3d7-48da-b170-f4b2a10e6fdc")]
 
 // Display name shown in NINA.
@@ -18,14 +18,14 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyCompany("Under African Skies")]
 
 // Short description (one line, shown in the plugin list).
-[assembly: AssemblyDescription("Under African Skies object chooser — a curated deep-sky catalogue with Wikipedia previews. Works anywhere in the world using your NINA location. Send any object to the Framing Assistant or slew the mount, without leaving NINA.")]
+[assembly: AssemblyDescription("Browse the Under African Skies deep-sky catalogue inside NINA — 675+ objects plus the Sun, Moon and planets, with real sky images, live visibility from your profile location, and the ideal telescope focal length for each target.")]
 
 // Product name (grouping).
 [assembly: AssemblyProduct("UAS Object Chooser")]
 
 // Plugin version. Bump this on every release.
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.0.0.1")]
+[assembly: AssemblyFileVersion("1.0.0.1")]
 
 // ---- NINA-specific manifest metadata (AssemblyMetadata key/value pairs) ----
 
@@ -36,17 +36,18 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyMetadata("LongDescription",
     @"**UAS Object Chooser** brings the Under African Skies observing catalogue directly into NINA.
 
-The panel loads a curated list of 675 deep-sky objects — optimised for the southern Namibian sky — live from underafricanskies.eu, with an offline cache so it keeps working at the telescope. Every object shows its catalogue number, type, hemisphere (SH/NH), magnitude and size. Search by name or catalogue number, filter by type, then:
+You'll find the panel in NINA's **Imaging tab** (add it from the panel menu if it isn't already shown). It lists 675+ deep-sky objects together with the **Sun, Moon and the seven planets**, computed for the current date and your NINA profile location, so it works anywhere in the world. Every object shows a real DSS sky image, its type and hemisphere (SH/NH), tonight's maximum altitude and whether it is well placed during the dark hours, plus a **recommended telescope focal length** that frames it to fill 60–80% of your camera's sensor (auto-detected from the connected camera).
 
-* **Set in Framing** — drop the object into NINA's Framing Assistant to plan your composition, or
+The full catalogue is **embedded**, so the list appears instantly and works fully offline; object images can be pre-downloaded for use at the telescope. Select any target to read a short description, then:
+
+* **Set in Framing** — drop it into NINA's Framing Assistant, or
 * **Slew & center** — send the mount straight to it.
 
-No browser, no copy-pasting coordinates — it all happens inside NINA.")]
+Made for the Bortle 1 skies of [Under African Skies](https://underafricanskies.eu).")]
 
-// Optional metadata (fill in as you like):
 [assembly: AssemblyMetadata("Homepage", "https://underafricanskies.eu")]
-[assembly: AssemblyMetadata("Repository", "https://underafricanskies.eu")]
-[assembly: AssemblyMetadata("License", "MIT")]
-[assembly: AssemblyMetadata("Tags", "Namibia,Southern Sky,Targets,Framing,DSO")]
+[assembly: AssemblyMetadata("Repository", "https://github.com/wpdrost69/nina-uas-object-chooser")]
+[assembly: AssemblyMetadata("License", "GPL-3.0")]
+[assembly: AssemblyMetadata("Tags", "Deep Sky,Catalogue,Targets,Framing,Planning,Planets")]
 
 [assembly: ComVisible(false)]

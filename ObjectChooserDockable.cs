@@ -71,6 +71,7 @@ namespace UnderAfricanSkies.ObjectChooser {
             SetInFramingCommand = new RelayCommand(o => SetInFraming(o as AstroObject ?? SelectedObject), o => (o ?? SelectedObject) != null);
             SlewCommand = new AsyncCommand<bool>(o => SlewAsync(SelectedObject), o => SelectedObject != null);
             OpenWikiCommand = new RelayCommand(_ => OpenWiki(), _ => !string.IsNullOrEmpty(PreviewPageUrl));
+            OpenWebsiteCommand = new RelayCommand(_ => OpenUrl("https://underafricanskies.eu"));
             PrepareOfflineCommand = new AsyncCommand<bool>(() => PrepareOfflineAsync());
 
             _ = LoadAsync();
@@ -152,6 +153,7 @@ namespace UnderAfricanSkies.ObjectChooser {
         public System.Windows.Input.ICommand SetInFramingCommand { get; }
         public IAsyncCommand SlewCommand { get; }
         public System.Windows.Input.ICommand OpenWikiCommand { get; }
+        public System.Windows.Input.ICommand OpenWebsiteCommand { get; }
         public IAsyncCommand PrepareOfflineCommand { get; }
 
         // ---------------- Location (worldwide, from NINA's profile) ----------------
@@ -504,11 +506,13 @@ namespace UnderAfricanSkies.ObjectChooser {
             }
         }
 
-        private void OpenWiki() {
-            if (string.IsNullOrEmpty(PreviewPageUrl)) return;
+        private void OpenWiki() => OpenUrl(PreviewPageUrl);
+
+        private static void OpenUrl(string url) {
+            if (string.IsNullOrEmpty(url)) return;
             try {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo {
-                    FileName = PreviewPageUrl, UseShellExecute = true
+                    FileName = url, UseShellExecute = true
                 });
             } catch { /* ignore */ }
         }

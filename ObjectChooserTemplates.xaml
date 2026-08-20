@@ -163,6 +163,9 @@
 
             <!-- status -->
             <StackPanel Grid.Row="6" Margin="0,4,0,0">
+                <Button Content="🌐 Visit Under African Skies" HorizontalAlignment="Left" Margin="0,0,0,4" Padding="0"
+                        BorderThickness="0" Background="Transparent" Cursor="Hand" Foreground="#00ff7f" FontWeight="SemiBold"
+                        ToolTip="Open underafricanskies.eu" Command="{Binding OpenWebsiteCommand}"/>
                 <TextBlock Text="{Binding OfflineStatus}" Opacity="0.7" FontSize="11" TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding StatusText}" Opacity="0.75" FontSize="11" TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding SensorText}" Opacity="0.6" FontSize="11" TextWrapping="Wrap"/>
