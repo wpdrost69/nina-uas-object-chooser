@@ -2,3 +2,10 @@ bin/
 obj/
 *.user
 .vs/
+
+# local helper artifacts
+*.bat
+push.exit
+push.log
+npm.log
+npm.exit
