@@ -90,7 +90,9 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
             return s;
         }
 
-        private string SkyFile(string name) => Path.Combine(_imagesDir, "sky_" + SafeName(name) + ".jpg");
+        // "sky3_" = cache version 3 (tighter 1.5x field so the object fills the frame, + curated
+        // sizes). Bumping the prefix makes every machine re-fetch with the new framing automatically.
+        private string SkyFile(string name) => Path.Combine(_imagesDir, "sky3_" + SafeName(name) + ".jpg");
 
         /// <summary>Cached sky-image path for an object, or null (no network).</summary>
         public string GetSkyCachedPath(string name) {
@@ -111,7 +113,7 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
                 cts.CancelAfter(TimeSpan.FromSeconds(20));
 
                 double raDeg = raHours * 15.0;
-                double fov = sizeArcmin.HasValue && sizeArcmin.Value > 0 ? (sizeArcmin.Value / 60.0) * 2.0 : 0.5;
+                double fov = sizeArcmin.HasValue && sizeArcmin.Value > 0 ? (sizeArcmin.Value / 60.0) * 1.5 : 0.5;
                 if (fov < 0.2) fov = 0.2;
                 if (fov > 5.0) fov = 5.0;
 
@@ -129,10 +131,45 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
             return null;
         }
 
+        // ---- Larger image for the click-to-zoom lightbox (higher resolution, same framing) ----
+        private string SkyBigFile(string name) => Path.Combine(_imagesDir, "big3_" + SafeName(name) + ".jpg");
+
+        /// <summary>Cached big (zoom) image path for an object, or null.</summary>
+        public string GetSkyBigCachedPath(string name) {
+            if (string.IsNullOrWhiteSpace(name)) return null;
+            var f = SkyBigFile(name);
+            return File.Exists(f) ? f : null;
+        }
+
+        /// <summary>Downloads (and caches) a larger 600px DSS image for the zoom view. Null on failure.</summary>
+        public async Task<string> GetSkyBigImageAsync(double raHours, double decDeg, double? sizeArcmin, string name, CancellationToken token = default) {
+            var cached = GetSkyBigCachedPath(name);
+            if (cached != null) return cached;
+            try {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                cts.CancelAfter(TimeSpan.FromSeconds(20));
+                double raDeg = raHours * 15.0;
+                double fov = sizeArcmin.HasValue && sizeArcmin.Value > 0 ? (sizeArcmin.Value / 60.0) * 1.5 : 0.5;
+                if (fov < 0.2) fov = 0.2;
+                if (fov > 5.0) fov = 5.0;
+                string inv(double d) => d.ToString("0.#####", CultureInfo.InvariantCulture);
+                const int px = 600;
+                var url = $"{Hips2Fits}?hips=CDS/P/DSS2/color&ra={inv(raDeg)}&dec={inv(decDeg)}&fov={inv(fov)}" +
+                          $"&width={px}&height={px}&projection=TAN&coordsys=icrs&format=jpg";
+                var bytes = await Http.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
+                if (bytes != null && bytes.Length > 200) {
+                    var f = SkyBigFile(name);
+                    File.WriteAllBytes(f, bytes);
+                    return f;
+                }
+            } catch { /* offline / timeout -> caller falls back to the thumbnail */ }
+            return null;
+        }
+
         /// <summary>How many sky images are cached on disk.</summary>
         public int SkyCachedCount() {
             try {
-                return System.Array.FindAll(Directory.GetFiles(_imagesDir, "sky_*.jpg"), _ => true).Length;
+                return System.Array.FindAll(Directory.GetFiles(_imagesDir, "sky3_*.jpg"), _ => true).Length;
             } catch { return 0; }
         }
 
@@ -209,6 +246,32 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
 
             lock (_metaLock) { _meta[wiki] = info; }
             SaveMeta();
+            return info;
+        }
+
+        /// <summary>
+        /// TEXT ONLY: fetch just the Wikipedia summary (short description + article link) for the selected
+        /// object. No image is requested, downloaded or decoded — the selected-object panel shows only text,
+        /// and the row/zoom pictures come from the bounded DSS sky-image path. Small JSON, hard 10 s timeout.
+        /// </summary>
+        public async Task<WikiInfo> GetTextAsync(string wiki, CancellationToken token = default) {
+            var info = new WikiInfo();
+            if (string.IsNullOrWhiteSpace(wiki)) return info;
+            // Reuse cached text if we already have it (offline-friendly).
+            lock (_metaLock) {
+                if (_meta.TryGetValue(wiki, out var c) && c != null) { info.Extract = c.Extract; info.PageUrl = c.PageUrl; }
+            }
+            try {
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
+                cts.CancelAfter(TimeSpan.FromSeconds(10));
+                var url = "https://en.wikipedia.org/api/rest_v1/page/summary/" + Uri.EscapeDataString(wiki);
+                var json = await Http.GetStringAsync(url, cts.Token).ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("extract", out var ex)) info.Extract = ex.GetString();
+                if (root.TryGetProperty("content_urls", out var cu) && cu.TryGetProperty("desktop", out var dk)
+                    && dk.TryGetProperty("page", out var pg)) info.PageUrl = pg.GetString();
+            } catch { /* keep whatever text we had */ }
             return info;
         }
 

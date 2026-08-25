@@ -89,6 +89,101 @@ namespace UnderAfricanSkies.ObjectChooser.Models {
         [JsonIgnore]
         public double? CurrentAltitude { get; set; }
 
+        /// <summary>Current azimuth right now, degrees from North clockwise (N=0,E=90,S=180,W=270). Null until computed.</summary>
+        [JsonIgnore]
+        public double? CurrentAzimuth { get; set; }
+
+        /// <summary>
+        /// Where to point right now, ASIAIR-style: compass heading + height, e.g. "SE  45°".
+        /// Shows "below horizon" when the object is currently down. "" until computed.
+        /// </summary>
+        [JsonIgnore]
+        public string DirectionText {
+            get {
+                if (!CurrentAltitude.HasValue || !CurrentAzimuth.HasValue) return "";
+                double alt = CurrentAltitude.Value;
+                if (alt < 0) return "below horizon";
+                string comp = UnderAfricanSkies.ObjectChooser.Services.Visibility.Compass(CurrentAzimuth.Value);
+                return $"{comp}  {System.Math.Round(alt)}°";
+            }
+        }
+
+        /// <summary>▲ while the object is climbing (eastern sky), ▼ while it is descending (western sky), "" if down.</summary>
+        [JsonIgnore]
+        public string DirectionTrend {
+            get {
+                if (!CurrentAltitude.HasValue || !CurrentAzimuth.HasValue || CurrentAltitude.Value < 0) return "";
+                return CurrentAzimuth.Value < 180.0 ? "▲" : "▼";   // east = rising, west = setting
+            }
+        }
+
+        /// <summary>Tooltip explaining the heading, e.g. "In the south-east, 45° above the horizon · rising".</summary>
+        [JsonIgnore]
+        public string DirectionTooltip {
+            get {
+                if (!CurrentAltitude.HasValue || !CurrentAzimuth.HasValue) return "Point your scope this way";
+                double alt = CurrentAltitude.Value;
+                if (alt < 0) return "Currently below the horizon — not observable right now";
+                string comp = UnderAfricanSkies.ObjectChooser.Services.Visibility.Compass(CurrentAzimuth.Value);
+                string trend = CurrentAzimuth.Value < 180.0 ? "rising" : "setting";
+                return $"Look {comp} ({System.Math.Round(CurrentAzimuth.Value)}°), {System.Math.Round(alt)}° above the horizon · {trend}";
+            }
+        }
+
+        /// <summary>Hidden when there is no current-position data yet.</summary>
+        [JsonIgnore]
+        public System.Windows.Visibility DirectionVisibility =>
+            (CurrentAltitude.HasValue && CurrentAzimuth.HasValue)
+                ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+        // ---- Altitude-through-the-night mini chart (filled in by the view-model) ----
+
+        /// <summary>Polyline of the object's altitude across tonight's dark hours, in a 200×70 box.</summary>
+        [JsonIgnore] public System.Windows.Media.PointCollection AltitudeCurve { get; set; }
+
+        /// <summary>Top-left of the green "now" dot inside the 200×70 chart box.</summary>
+        [JsonIgnore] public double DotLeft { get; set; }
+        [JsonIgnore] public double DotTop { get; set; }
+
+        /// <summary>Green "now" dot — always shown while a chart exists (the plot window always includes now).</summary>
+        [JsonIgnore] public System.Windows.Visibility DotVisibility { get; set; } = System.Windows.Visibility.Collapsed;
+
+        /// <summary>Shaded night band (dusk→dawn) inside the 200×70 chart box.</summary>
+        [JsonIgnore] public double BandLeft { get; set; }
+        [JsonIgnore] public double BandWidth { get; set; }
+        [JsonIgnore] public System.Windows.Visibility BandVisibility { get; set; } = System.Windows.Visibility.Collapsed;
+        /// <summary>X positions for the dusk / dawn labels (band edges).</summary>
+        [JsonIgnore] public double DuskLeft { get; set; }
+        [JsonIgnore] public double DawnLeft { get; set; }
+
+        /// <summary>Chart is shown only once a curve has been computed (hidden under polar day).</summary>
+        [JsonIgnore]
+        public System.Windows.Visibility ChartVisibility =>
+            (AltitudeCurve != null && AltitudeCurve.Count > 1)
+                ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+        /// <summary>
+        /// Tell the UI that every time-dependent value has just been recomputed, so bindings refresh.
+        /// Called by the view-model's minute timer (and after each recompute) so the "Now" heading,
+        /// the green dot and the altitude curve track the moving sky without rebuilding the list.
+        /// </summary>
+        public void RaiseTimeDependentChanged() {
+            OnChanged(nameof(DirectionText));
+            OnChanged(nameof(DirectionTrend));
+            OnChanged(nameof(DirectionTooltip));
+            OnChanged(nameof(DirectionVisibility));
+            OnChanged(nameof(AltitudeCurve));
+            OnChanged(nameof(DotLeft));
+            OnChanged(nameof(DotTop));
+            OnChanged(nameof(DotVisibility));
+            OnChanged(nameof(ChartVisibility));
+            OnChanged(nameof(BandLeft));
+            OnChanged(nameof(BandWidth));
+            OnChanged(nameof(BandVisibility));
+            OnChanged(nameof(DuskLeft));
+            OnChanged(nameof(DawnLeft));
+        }
+
         /// <summary>True if the object is well placed tonight from the observer's location.</summary>
         [JsonIgnore]
         public bool WellPlaced { get; set; }

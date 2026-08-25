@@ -50,6 +50,46 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
         }
 
         /// <summary>
+        /// Altitude AND azimuth (both degrees) of an object right now, from lat/lon.
+        /// Azimuth is measured from due North, clockwise through East: N=0°, E=90°, S=180°, W=270°.
+        /// This is what ASIAIR shows: a compass heading + a height above the horizon.
+        /// </summary>
+        public static (double altDeg, double azDeg) AltAz(double raHours, double decDeg, double latDeg, double lonDeg, DateTime utc) {
+            double jd = JulianDate(utc);
+            double T = (jd - 2451545.0) / 36525.0;
+            double gmst = 280.46061837 + 360.98564736629 * (jd - 2451545.0)
+                        + 0.000387933 * T * T - T * T * T / 38710000.0;
+            gmst = ((gmst % 360) + 360) % 360;
+            double lst = (gmst + lonDeg + 360) % 360;
+            double ha = lst - (raHours * 15.0);
+            ha = ((ha + 180) % 360) - 180;
+
+            double haR = ha * Math.PI / 180.0;
+            double decR = decDeg * Math.PI / 180.0;
+            double latR = latDeg * Math.PI / 180.0;
+
+            double sinAlt = Math.Sin(decR) * Math.Sin(latR)
+                          + Math.Cos(decR) * Math.Cos(latR) * Math.Cos(haR);
+            sinAlt = Math.Max(-1, Math.Min(1, sinAlt));
+            double alt = Math.Asin(sinAlt) * 180.0 / Math.PI;
+
+            // Meeus 13.5: azimuth measured westward from South, converted to from-North clockwise.
+            double A = Math.Atan2(Math.Sin(haR),
+                                  Math.Cos(haR) * Math.Sin(latR) - Math.Tan(decR) * Math.Cos(latR));
+            double az = (A * 180.0 / Math.PI + 180.0) % 360.0;
+            if (az < 0) az += 360.0;
+            return (alt, az);
+        }
+
+        /// <summary>Eight-point compass label (N, NE, E, SE, S, SW, W, NW) for an azimuth in degrees.</summary>
+        public static string Compass(double azDeg) {
+            string[] pts = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
+            double a = ((azDeg % 360) + 360) % 360;
+            int idx = (int)Math.Round(a / 45.0) % 8;
+            return pts[idx];
+        }
+
+        /// <summary>
         /// Highest altitude the object ever reaches from this latitude (its transit altitude).
         /// This is time-independent: 90 - |lat - dec|, clamped to [-90, 90].
         /// </summary>
@@ -91,6 +131,44 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
                 if (run.Count >= 6) return run;   // enough of a window to judge "well placed"
             }
             return Array.Empty<DateTime>();
+        }
+
+        /// <summary>
+        /// The night's dark window as (start, end) UTC — dusk to dawn — for the night that is on now
+        /// or coming next. Used to draw the altitude-through-the-night chart. Tries astronomical dark
+        /// (Sun &lt; −12°), relaxing to −6° then 0° for short summer nights. ok=false under polar day.
+        /// </summary>
+        public static (DateTime start, DateTime end, bool ok) NightWindow(double latDeg, double lonDeg, DateTime nowUtc) {
+            foreach (double thr in new[] { -12.0, -6.0, 0.0 }) {
+                var w = SunBelowWindow(latDeg, lonDeg, nowUtc, thr);
+                if (w.ok) return w;
+            }
+            return (nowUtc, nowUtc, false);
+        }
+
+        /// <summary>
+        /// The window (start, end) UTC during which the Sun is below <paramref name="thrDeg"/> for the
+        /// period that is on now or coming next. With thrDeg = 0 this is sunset → sunrise — the observable
+        /// night — which is what the altitude chart uses so the "now" marker starts moving at sunset,
+        /// not only once astronomical dark begins (which, in summer at high latitude, is late and short).
+        /// </summary>
+        public static (DateTime start, DateTime end, bool ok) SunBelowWindow(double latDeg, double lonDeg, DateTime nowUtc, double thrDeg) {
+            var t0 = nowUtc.AddHours(-14);               // look back far enough to catch this sunset
+            const int stepMin = 10;
+            int steps = 38 * 60 / stepMin;               // scan a 38 h span in 10-minute steps
+            var runs = new List<(DateTime s, DateTime e)>();
+            DateTime? cs = null;
+            for (int i = 0; i <= steps; i++) {
+                var t = t0.AddMinutes(i * stepMin);
+                bool dark = SunAltitude(latDeg, lonDeg, t) < thrDeg;
+                if (dark && cs == null) cs = t;
+                else if (!dark && cs != null) { runs.Add((cs.Value, t)); cs = null; }
+            }
+            if (cs != null) runs.Add((cs.Value, t0.AddMinutes(steps * stepMin)));
+            foreach (var r in runs) if (r.s <= nowUtc && nowUtc <= r.e) return (r.s, r.e, true); // in progress
+            foreach (var r in runs) if (r.s > nowUtc) return (r.s, r.e, true);                    // the next one
+            if (runs.Count > 0) return (runs[runs.Count - 1].s, runs[runs.Count - 1].e, true);
+            return (nowUtc, nowUtc, false);
         }
 
         /// <summary>First contiguous run of darkness (Sun below the threshold) in the next 24 h.</summary>
