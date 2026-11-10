@@ -81,18 +81,20 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
 
         // ---------------- Real sky images (DSS survey by coordinates) ----------------
         // Every object gets a correct, real image of that patch of sky — no wrong/missing
-        // Wikipedia pictures. Rendered on demand by the CDS hips2fits service and cached.
+        // Wikipedia pictures. Served by STScI's Digitized Sky Survey cutout service and cached.
+        // (Previously CDS hips2fits, which proved slow/unreachable on some networks; STScI
+        //  returns a greyscale DSS cutout reliably in ~1 s.)
 
-        private const string Hips2Fits = "https://alasky.cds.unistra.fr/hips-image-services/hips2fits";
+        private const string DssSearch = "https://archive.stsci.edu/cgi-bin/dss_search";
 
         private static string SafeName(string s) {
             foreach (var c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
             return s;
         }
 
-        // "sky3_" = cache version 3 (tighter 1.5x field so the object fills the frame, + curated
-        // sizes). Bumping the prefix makes every machine re-fetch with the new framing automatically.
-        private string SkyFile(string name) => Path.Combine(_imagesDir, "sky3_" + SafeName(name) + ".jpg");
+        // "sky4_" = cache version 4 (STScI DSS source + 1.5x field so the object fills the frame).
+        // Bumping the prefix makes every machine re-fetch automatically; stale caches are superseded.
+        private string SkyFile(string name) => Path.Combine(_imagesDir, "sky4_" + SafeName(name) + ".jpg");
 
         /// <summary>Cached sky-image path for an object, or null (no network).</summary>
         public string GetSkyCachedPath(string name) {
@@ -113,13 +115,14 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
                 cts.CancelAfter(TimeSpan.FromSeconds(20));
 
                 double raDeg = raHours * 15.0;
-                double fov = sizeArcmin.HasValue && sizeArcmin.Value > 0 ? (sizeArcmin.Value / 60.0) * 1.5 : 0.5;
-                if (fov < 0.2) fov = 0.2;
-                if (fov > 5.0) fov = 5.0;
+                double fovDeg = sizeArcmin.HasValue && sizeArcmin.Value > 0 ? (sizeArcmin.Value / 60.0) * 1.5 : 0.5;
+                double fovArcmin = fovDeg * 60.0;
+                if (fovArcmin < 10.0) fovArcmin = 10.0;
+                if (fovArcmin > 60.0) fovArcmin = 60.0;
 
                 string inv(double d) => d.ToString("0.#####", CultureInfo.InvariantCulture);
-                var url = $"{Hips2Fits}?hips=CDS/P/DSS2/color&ra={inv(raDeg)}&dec={inv(decDeg)}&fov={inv(fov)}" +
-                          $"&width={px}&height={px}&projection=TAN&coordsys=icrs&format=jpg";
+                var url = $"{DssSearch}?v=poss2ukstu_red&r={inv(raDeg)}&d={inv(decDeg)}&e=J2000" +
+                          $"&h={inv(fovArcmin)}&w={inv(fovArcmin)}&f=gif&c=none";
 
                 var bytes = await Http.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
                 if (bytes != null && bytes.Length > 200) {
@@ -132,7 +135,7 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
         }
 
         // ---- Larger image for the click-to-zoom lightbox (higher resolution, same framing) ----
-        private string SkyBigFile(string name) => Path.Combine(_imagesDir, "big3_" + SafeName(name) + ".jpg");
+        private string SkyBigFile(string name) => Path.Combine(_imagesDir, "big4_" + SafeName(name) + ".jpg");
 
         /// <summary>Cached big (zoom) image path for an object, or null.</summary>
         public string GetSkyBigCachedPath(string name) {
@@ -149,13 +152,13 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(token);
                 cts.CancelAfter(TimeSpan.FromSeconds(20));
                 double raDeg = raHours * 15.0;
-                double fov = sizeArcmin.HasValue && sizeArcmin.Value > 0 ? (sizeArcmin.Value / 60.0) * 1.5 : 0.5;
-                if (fov < 0.2) fov = 0.2;
-                if (fov > 5.0) fov = 5.0;
+                double fovDeg = sizeArcmin.HasValue && sizeArcmin.Value > 0 ? (sizeArcmin.Value / 60.0) * 1.5 : 0.5;
+                double fovArcmin = fovDeg * 60.0;
+                if (fovArcmin < 10.0) fovArcmin = 10.0;
+                if (fovArcmin > 60.0) fovArcmin = 60.0;
                 string inv(double d) => d.ToString("0.#####", CultureInfo.InvariantCulture);
-                const int px = 600;
-                var url = $"{Hips2Fits}?hips=CDS/P/DSS2/color&ra={inv(raDeg)}&dec={inv(decDeg)}&fov={inv(fov)}" +
-                          $"&width={px}&height={px}&projection=TAN&coordsys=icrs&format=jpg";
+                var url = $"{DssSearch}?v=poss2ukstu_red&r={inv(raDeg)}&d={inv(decDeg)}&e=J2000" +
+                          $"&h={inv(fovArcmin)}&w={inv(fovArcmin)}&f=gif&c=none";
                 var bytes = await Http.GetByteArrayAsync(url, cts.Token).ConfigureAwait(false);
                 if (bytes != null && bytes.Length > 200) {
                     var f = SkyBigFile(name);
@@ -169,7 +172,7 @@ namespace UnderAfricanSkies.ObjectChooser.Services {
         /// <summary>How many sky images are cached on disk.</summary>
         public int SkyCachedCount() {
             try {
-                return System.Array.FindAll(Directory.GetFiles(_imagesDir, "sky3_*.jpg"), _ => true).Length;
+                return System.Array.FindAll(Directory.GetFiles(_imagesDir, "sky4_*.jpg"), _ => true).Length;
             } catch { return 0; }
         }
 
