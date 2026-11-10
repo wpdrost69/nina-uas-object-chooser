@@ -11,7 +11,8 @@ are — Namibia, Chile, Spain, Australia — with no location picker needed.
 
 ## What it does
 
-- **675+ deep-sky objects** plus the **Sun, Moon and the seven planets** (positions from
+- **3,200+ deep-sky objects** — galaxies, nebulae, star clusters and planetary nebulae drawn
+  from the NGC/IC catalogues — plus the **Sun, Moon and the seven planets** (positions from
   NINA's own NOVAS-backed astrometry, refreshed continuously). Slewing to the Sun is
   disabled for equipment safety.
 - **A real sky image for every object** — a Digitized Sky Survey (DSS) cutout centred on the
