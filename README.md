@@ -1,83 +1,79 @@
-# UAS Object Chooser — NINA plugin (v0.2 starter)
+# UAS Object Chooser — a NINA plugin
 
-A native NINA plugin that brings the **Under African Skies** object catalogue directly
-into NINA. It adds a dockable panel — **"UAS Object Chooser"** — that mirrors the website
-tool: same 675 objects, same options (search, type filter, hemisphere, sort), the same
-**preview images from Wikipedia**, and **Set in Framing** / **Slew & center** actions —
-all inside NINA, no browser, no copied coordinates.
+Brings the **Under African Skies** observing catalogue straight into NINA as a dockable
+panel, so you can browse targets, see a real image of each one, check tonight's visibility
+from your own location, frame/slew to them, and run an unattended schedule — without
+leaving NINA or copying coordinates.
 
-## Answers to your three questions
+Works anywhere in the world: NINA already knows your latitude/longitude from the active
+profile, so every object's altitude and visibility is computed for wherever you actually
+are — Namibia, Chile, Spain, Australia — with no location picker needed.
 
-**1. "UAS Object Chooser" as the name** — done. That's the panel title and the plugin's
-display name in NINA. (The internal assembly is `UnderAfricanSkies.ObjectChooser`.)
+## What it does
 
-**2. "Must work everywhere in the world, like the website" — yes, genuinely possible, and
-it's actually cleaner here than on the website.** NINA already knows the observer's
-latitude/longitude (from the active profile's Astrometry settings). The plugin reads that
-and computes each object's altitude/visibility for wherever you actually are — Namibia,
-Chile, Spain, Australia — with **no location picker needed**. The catalogue itself is
-global (both hemispheres). See `Services/Visibility.cs`, which is a direct C# port of the
-website's altitude maths, and `ComputeVisibility()` in the panel.
+- **675+ deep-sky objects** plus the **Sun, Moon and the seven planets** (positions from
+  NINA's own NOVAS-backed astrometry, refreshed continuously). Slewing to the Sun is
+  disabled for equipment safety.
+- **A real sky image for every object** — a Digitized Sky Survey (DSS) cutout centred on the
+  object's coordinates, fetched from **STScI** and cached locally. Click to zoom. A
+  *Download images for offline use* button pre-caches everything, so no internet is needed
+  at the telescope.
+- **Short description + "Read more on Wikipedia"** for the selected object (text from the
+  Wikipedia summary API, cached).
+- **Filtering & sorting**: search by name or catalogue number, type (galaxies / nebulae /
+  clusters), hemisphere (SH/NH), sort by max altitude / name / magnitude / size, a
+  "well placed tonight" filter, and a **direction filter** that shows only objects in a
+  chosen compass sector right now.
+- **Recommended focal length** per object — framed to fill about half of your camera's
+  sensor (auto-detected from the connected camera).
+- **Actions**: *Set in Framing* (hand off to NINA's Framing Assistant), *Slew & center*
+  (plate-solve + centre), and a **position & rotation** panel with a live sensor-frame
+  schematic plus *Slew, center & rotate* (plate-solve + rotator).
+- **Schedule + Automatic mode**: plan objects into dated time-slots (grouped per night,
+  overlaps flagged). Turn on **Automatic mode** and, whenever NINA is idle, the plugin slews
+  to and images each slot at its time. It only unparks/images while the **Safety Monitor
+  reports safe**, parks the mount if conditions turn unsafe or when the session is done, and
+  always **stops before dawn** (astronomical twilight at your location) — never starting a
+  slot in daylight.
 
-**3. "Show the pictures like it does now" — yes, same source, and now built — AND it works
-offline.** The website pulls its images from the **Wikipedia REST summary API** by article
-name. The plugin does the same (`Services/AstroImageService.cs`), but with a **persistent
-local cache**: images and descriptions are stored under
-`%localappdata%\NINA\Plugins\UASObjectChooser\images\`. A **"Download images for offline
-use"** button bulk-downloads every object's picture once (while online); after that the
-tool needs **no internet at the telescope**. We deliberately do NOT bundle the images into
-the product: Wikipedia/Commons images have mixed licences (many CC-BY-SA, some non-free),
-so bundling would be a redistribution with per-image obligations. Per-install local caching
-keeps that clean while giving you full offline use.
+The full catalogue is **embedded** in the plugin, so the list appears instantly and works
+fully offline; when online it also refreshes from `underafricanskies.eu/astro-catalog.json`.
 
-## What's in v0.2
+## Install
 
-- **Same data**: the 675-object catalogue, fetched live from `underafricanskies.eu/astro-catalog.json` with an offline cache.
-- **Same options**: search (name or catalogue number), type filter (galaxies/nebulae/clusters), hemisphere filter, **sort** (max altitude / name / magnitude / size), plus a **"Well placed tonight"** filter that uses your NINA location.
-- **Pictures**: preview image + description + "Read more on Wikipedia" for the selected object.
-- **Worldwide**: max-altitude and visibility computed from NINA's profile location.
-- **Actions**: Set in Framing, Slew & center.
+See **[BUILD.md](BUILD.md)**. In short: let GitHub Actions build the `.dll` for you (no local
+developer setup), download the artifact, copy it to
+`%localappdata%\NINA\Plugins\UnderAfricanSkies.ObjectChooser\`, and start NINA — the
+**UAS Object Chooser** panel appears in the Imaging tab.
 
-## Files
+Requires **NINA 3.0** or newer.
 
-| File | Purpose |
+## Project layout
+
+| Path | Purpose |
 |------|---------|
-| `Models/AstroObject.cs` | Object model (incl. `wiki`, computed altitude fields). Pure C#. |
-| `Services/CatalogService.cs` | Live fetch + offline cache. Pure C#. |
-| `Services/Visibility.cs` | Altitude / visibility maths (port of the website). Pure C#. |
-| `Services/AstroImageService.cs` | Wikipedia image + description fetch. Pure C#. |
 | `ObjectChooserPlugin.cs` | Plugin entry point (MEF export). |
-| `ObjectChooserDockable.cs` | The panel view-model, actions, visibility, image loading. |
-| `ObjectChooserTemplates.xaml(.cs)` | The panel UI (DataTemplate exported to NINA). |
-| `Properties/AssemblyInfo.cs` | Plugin manifest (name "UAS Object Chooser", GUID, version, description). |
-| `UAS.ObjectChooser.csproj` | .NET 8 / WPF project referencing `NINA.Plugin`. |
+| `ObjectChooserDockable.cs` | The panel view-model: catalogue, filtering, visibility, framing/rotation, slew & center, schedule + automatic mode. |
+| `ObjectChooserTemplates.xaml` / `.xaml.cs` | The panel UI (DataTemplate exported to NINA). |
+| `Models/AstroObject.cs` · `Models/ScheduleEntry.cs` | Data models. |
+| `Services/CatalogService.cs` | Catalogue: live fetch → disk cache → embedded fallback. |
+| `Services/Visibility.cs` | Altitude / visibility maths (a port of the website's). |
+| `Services/Ephemeris.cs` | Sun / Moon / planet positions via NINA astrometry. |
+| `Services/AstroImageService.cs` | DSS sky images (STScI) + Wikipedia text, with a persistent offline cache. |
+| `Services/Framing.cs` | Focal-length / sensor-framing helper. |
+| `Services/ScheduleStore.cs` | Persists the schedule between sessions. |
+| `Properties/AssemblyInfo.cs` | Plugin manifest (name, GUID, version, description). |
+| `astro-catalog.json` | The embedded catalogue. |
 
-## Build & install (Windows)
+## Notes for the maintainer
 
-1. Prove the loop first: generate an empty plugin from the official template
-   (isbeorn/nina.plugin.template), build it, drop the DLL in `%localappdata%\NINA\Plugins\...`,
-   and confirm its panel shows in NINA. That's your known-good compilable base.
-2. Open `UAS.ObjectChooser.csproj` in Visual Studio 2022; restore packages
-   (`Update-Package NINA.Plugin -IncludePrerelease` to match your NINA build).
-3. Build (x64), copy `UnderAfricanSkies.ObjectChooser.dll` to
-   `%localappdata%\NINA\Plugins\UnderAfricanSkies.ObjectChooser\` (or uncomment the auto-copy target).
-4. Start NINA → the **UAS Object Chooser** dockable panel is available.
-5. Deploy `astro-catalog.json` to your website root so the live endpoint resolves.
+- **Sky images** come from the STScI DSS cutout service (greyscale POSS2/UKSTU red), chosen
+  for reliability. An earlier version used CDS *hips2fits* (colour), which proved slow or
+  unreachable on some networks. The cache prefix (`sky4_`/`big4_`) is bumped whenever the
+  source changes so clients re-fetch automatically.
+- A few NINA API touchpoints are marked `// VERIFY` in `ObjectChooserDockable.cs`; reconcile
+  them against the exact NINA build you target if the compiler complains.
 
-## The only version-sensitive lines (`// VERIFY`)
+## Licence
 
-Reconcile these against your NINA build if the compiler complains — everything else is plain C#:
-
-- `_profileService.ActiveProfile.AstrometrySettings.Latitude / .Longitude`
-- `new Coordinates(ra, dec, Epoch.J2000, Coordinates.RAType.Hours)`
-- `new DeepSkyObject(name, coords, imageRepositoryPath, horizon)`
-- `IFramingAssistantVM.SetCoordinates(dso)`
-- `IApplicationMediator.ChangeApplicationTab(ApplicationTab.FRAMINGASSISTANT)`
-- `ITelescopeMediator.GetInfo().Connected` and `SlewToCoordinatesAsync(coords, token)`
-
-## Next iterations
-
-- Real plate-solve **centering** for "Slew & center" (a Center container / solver) instead of a plain slew.
-- **Add to sequence** as a third action.
-- Catalogue URL as a **plugin option** (IPluginOptionsVM).
-- Match the website's exact "tonight" dark-hours window for the well-placed test.
+GPL-3.0. Made for the Bortle 1 skies of [Under African Skies](https://underafricanskies.eu).
